@@ -9,6 +9,8 @@ obtener_info_equipo()
 
 cmd = Consola(ip)
 
+cmd.tracert()
+"""
 print()
 print('.:PING HACIA UN EQUIPO ESPECIFICO:.')
 cmd.ping()
@@ -16,3 +18,4 @@ cmd.ping()
 print()
 print('.:INFORMACION DE LOS PUERTOS ABIERTOS DEL EQUIPO LOCAL:.')
 cmd.puertos()
+"""

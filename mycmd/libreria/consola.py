@@ -1,6 +1,7 @@
 import sys
 import platform
 import subprocess
+from subprocess import Popen,PIPE
 from socket import AF_INET,SOCK_STREAM,socket
 
 class Consola:
@@ -11,11 +12,19 @@ class Consola:
         self.puerto = 1
         self.conectado = None
         self.s = None
+        self.line = None
 
 
     def ping(self):
         self.comando = ['ping',self.parametro,'4',self.ip]
         subprocess.call(self.comando)
+
+    def tracert(self):
+        self.s = Popen(['traceroute', self.ip ], stdout=PIPE)
+        while True:
+            self.line = self.s.stdout.readline()
+            if not self.line:
+                break
     
     def puertos(self):
         while self.puerto <= 65535:
